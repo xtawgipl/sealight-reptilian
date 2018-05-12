@@ -144,7 +144,7 @@ class OutputExcel(object):
                         if counter != len(technology_list):
                             light_info_str += "\r\n"
                     light_dict[light.use_name] = light_info_str
-                    light_list_data.append(light_dict)
+                light_list_data.append(light_dict)
         return light_list_data
 
     def _init_light_dict(self, model_name, type, front_title_list, rear_title_list, internal_title_list):
@@ -167,6 +167,16 @@ class OutputExcel(object):
 
 
 if __name__ == '__main__':
+
+    # 表头占2行
+    title_low_num = 2
+
+    # 系列 列开始合并的列
+    model_merge_start = title_low_num
+
+    # type 类型 列开始合并的列
+    type_merge_start = title_low_num
+
     manufacturerService = ManufacturerService()
     manufacturer_data = manufacturerService.find_by_key(1)
 
@@ -205,6 +215,23 @@ if __name__ == '__main__':
         sheet.col(col_num).width = 256 * 20
 
     dataset = outputExcel.get_light_dataset(manufacturer_data, front_title_list, rear_title_list, internal_title_list)
+
     for i in range(0, len(dataset)):
         outputExcel.write_row(sheet, list(dataset[i].values()), i + 2, 0)
+        if i != 0:
+            if dataset[i]["model_name"] != dataset[i - 1]["model_name"]:
+                if i - 1 + title_low_num - model_merge_start > 1:
+                    sheet.write_merge(model_merge_start, i - 1 + title_low_num, 0, 0,
+                                      dataset[i - 1]["model_name"], outputExcel.default_style)
+                    model_merge_start = i + title_low_num
+            # if dataset[i]["type_name"] != dataset[i - 1]["type_name"]:
+            #     if i - 1 + title_low_num - type_merge_start > 1:
+            #         sheet.write_merge(type_merge_start, i - 1 + title_low_num, 1, 1,
+            #                           dataset[i - 1]["type_name"], outputExcel.default_style)
+            #         type_merge_start = i + title_low_num
+
+    sheet.write_merge(model_merge_start, len(dataset) - 1 + title_low_num, 0, 0,
+                      dataset[len(dataset) - 1]["model_name"], outputExcel.default_style)
+    # sheet.write_merge(type_merge_start, len(dataset) - 1 + title_low_num, 1, 1,
+    #                   dataset[len(dataset) - 1]["type_name"], outputExcel.default_style)
     outputExcel.save()
