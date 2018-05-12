@@ -5,7 +5,10 @@
 
 
 import Reptilian
-
+from OutputExcel import OutputExcel
 
 if __name__ == '__main__':
-    Reptilian.fetch_all_data()
+    # Reptilian.fetch_all_data()
+
+    excelUtil = OutputExcel()
+    excelUtil.export_excel()

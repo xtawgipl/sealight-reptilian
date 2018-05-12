@@ -5,7 +5,7 @@
 # 常量类
 
 # 生成的excel表存放地址
-EXCEL_PATH = "D:/data/"
+EXCEL_PATH = "D:/data/osram/xls/"
 
 # 获取所有品牌如 BMW等
 ALL_MANUFACTURER_URL = "https://am-application.osram.info/en/getAllManufacturer/1.json"

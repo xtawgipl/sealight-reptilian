@@ -1,7 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import xlwt
 
 import Constants
 from logger.loggerFactory import logger
+from model.Entities import ManufacturerBean
 from service.LightInfosService import LightInfosService
 from service.ManufacturerService import ManufacturerService
 from service.TechnologyService import TechnologyService
@@ -9,13 +12,15 @@ from service.TechnologyService import TechnologyService
 
 class OutputExcel(object):
 
-    def __init__(self, file_path):
+    def __init__(self):
+        self.manufacturerService = ManufacturerService()
         self.technologyService = TechnologyService()
         self.lightInfosService = LightInfosService()
-        self.file_path = file_path
         self.workbook = xlwt.Workbook()
         self.title_list = ["系列", "类型"]
         self.default_style = xlwt.easyxf('align: wrap on, vert center;align: horiz center')
+        # 创建线程池
+        self.executor = ThreadPoolExecutor(50)
 
     def create_sheet(self, sheet_name):
         """创建表"""
@@ -79,10 +84,6 @@ class OutputExcel(object):
                     sheet.write(row_num, col, data[col - start_col_num], style)
         else:
             raise RuntimeError('格式不正确，必须为list类型数据')
-
-    def save(self):
-        """保存文件"""
-        self.workbook.save(self.file_path)
 
     def get_manufacturer_data(self, manufacturerService, __manufacturer_id):
         return manufacturerService.find_by_key(__manufacturer_id)
@@ -165,6 +166,67 @@ class OutputExcel(object):
         """生成excel表头"""
         pass
 
+    def export_excel(self):
+        manufacturer_list = self.manufacturerService.select_all(ManufacturerBean)
+        for manufacturer in manufacturer_list:
+            self.executor.submit(self.export_excel_work, manufacturer)
+
+    def export_excel_work(self, manufacturer_data):
+        # 表头占2行
+        title_low_num = 2
+
+        # 系列 列开始合并的列
+        model_merge_start = title_low_num
+
+        sheet = self.create_sheet(manufacturer_data.manufacturer_name)
+
+        front_title_list, rear_title_list, internal_title_list = self.get_light_titles(manufacturer_data)
+        light_list = list()
+        light_list.extend(front_title_list)
+        light_list.extend(rear_title_list)
+        light_list.extend(internal_title_list)
+
+        title_len = len(self.title_list)
+        front_len = len(front_title_list)
+        rear_len = len(rear_title_list)
+        internal_len = len(internal_title_list)
+        sheet.write_merge(0, 0,
+                          title_len,
+                          title_len + front_len - 1,
+                          "前灯", self.set_title_style(2))
+        sheet.write_merge(0, 0,
+                          title_len + front_len,
+                          title_len + front_len + rear_len - 1,
+                          "后灯", self.set_title_style(3))
+        sheet.write_merge(0, 0,
+                          title_len + front_len + rear_len,
+                          title_len + front_len + rear_len + internal_len - 1,
+                          "内灯", self.set_title_style(5))
+
+        for col_num in range(0, len(self.title_list)):
+            sheet.write_merge(0, 1, col_num, col_num, self.title_list[col_num], self.set_title_style())
+
+            self.write_row(sheet, light_list, 1, title_len, self.set_title_style())
+
+        for col_num in range(0, len(light_list) + len(self.title_list)):
+            sheet.col(col_num).width = 256 * 20
+
+        dataset = self.get_light_dataset(manufacturer_data, front_title_list, rear_title_list,
+                                                internal_title_list)
+
+        for i in range(0, len(dataset)):
+            self.write_row(sheet, list(dataset[i].values()), i + 2, 0)
+            if i != 0:
+                if dataset[i]["model_name"] != dataset[i - 1]["model_name"]:
+                    if i - 1 + title_low_num - model_merge_start > 1:
+                        sheet.write_merge(model_merge_start, i - 1 + title_low_num, 0, 0,
+                                          dataset[i - 1]["model_name"], self.default_style)
+                        model_merge_start = i + title_low_num
+
+        sheet.write_merge(model_merge_start, len(dataset) - 1 + title_low_num, 0, 0,
+                          dataset[len(dataset) - 1]["model_name"], self.default_style)
+        self.workbook.save(Constants.EXCEL_PATH + "{}.xls".format(manufacturer_data.manufacturer_name))
+
 
 if __name__ == '__main__':
 
@@ -173,9 +235,6 @@ if __name__ == '__main__':
 
     # 系列 列开始合并的列
     model_merge_start = title_low_num
-
-    # type 类型 列开始合并的列
-    type_merge_start = title_low_num
 
     manufacturerService = ManufacturerService()
     manufacturer_data = manufacturerService.find_by_key(1)
@@ -224,14 +283,7 @@ if __name__ == '__main__':
                     sheet.write_merge(model_merge_start, i - 1 + title_low_num, 0, 0,
                                       dataset[i - 1]["model_name"], outputExcel.default_style)
                     model_merge_start = i + title_low_num
-            # if dataset[i]["type_name"] != dataset[i - 1]["type_name"]:
-            #     if i - 1 + title_low_num - type_merge_start > 1:
-            #         sheet.write_merge(type_merge_start, i - 1 + title_low_num, 1, 1,
-            #                           dataset[i - 1]["type_name"], outputExcel.default_style)
-            #         type_merge_start = i + title_low_num
 
     sheet.write_merge(model_merge_start, len(dataset) - 1 + title_low_num, 0, 0,
                       dataset[len(dataset) - 1]["model_name"], outputExcel.default_style)
-    # sheet.write_merge(type_merge_start, len(dataset) - 1 + title_low_num, 1, 1,
-    #                   dataset[len(dataset) - 1]["type_name"], outputExcel.default_style)
     outputExcel.save()
