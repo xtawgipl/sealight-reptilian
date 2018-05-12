@@ -15,6 +15,7 @@ class OutputExcel(object):
         self.file_path = file_path
         self.workbook = xlwt.Workbook()
         self.title_list = ["系列", "类型"]
+        self.default_style = xlwt.easyxf('align: wrap on, vert center;align: horiz center')
 
     def create_sheet(self, sheet_name):
         """创建表"""
@@ -28,21 +29,21 @@ class OutputExcel(object):
         font.bold = bold
         font.color_index = color_index
         font.height = height
-        # style.font = font
+        style.font = font
 
-        # borders = xlwt.Borders()
-        # borders.left = 1
-        # borders.right = 1
-        # borders.top = 1
-        # borders.bottom = 1
-        # borders.bottom_colour = 0x3A
-        # style.borders = borders
+        borders = xlwt.Borders()
+        borders.left = 1
+        borders.right = 1
+        borders.top = 1
+        borders.bottom = 1
+        borders.bottom_colour = 0x3A
+        style.borders = borders
 
         alignment = xlwt.Alignment()
         alignment.horz = xlwt.Alignment.HORZ_CENTER  # 垂直对齐
         alignment.vert = xlwt.Alignment.VERT_CENTER  # 水平对齐
         alignment.wrap = xlwt.Alignment.WRAP_AT_RIGHT  # 自动换行
-        # style.alignment = alignment
+        style.alignment = alignment
 
         pattern = xlwt.Pattern()
         pattern.pattern = xlwt.Pattern.SOLID_PATTERN
@@ -51,7 +52,7 @@ class OutputExcel(object):
             May be: 8 through 63. 0 = Black, 1 = White, 2 = Red, 3 = Green, 4 = Blue, 5 = Yellow, 6 = Magenta, 7 = Cyan, 16 = Maroon, 17 = Dark Green, 18 = Dark Blue, 19 = Dark Yellow , almost brown), 20 = Dark Magenta, 21 = Teal, 22 = Light Gray, 23 = Dark Gray, the list goes on...
         """
         pattern.pattern_fore_colour = pattern_fore_colour
-        # style.pattern = pattern
+        style.pattern = pattern
         return style
 
     def set_title_style(self, pattern_fore_colour=None):
@@ -65,14 +66,17 @@ class OutputExcel(object):
         return self.set_common_style('宋体', False, 1, 12 * 20, 1)
 
     def write_row(self, sheet, data, row_num, start_col_num=None, style=None):
-        if style is None:
-            style = self.set_content_style()
+        # if style is None:
+        #     style = self.set_content_style()
         if start_col_num is None:
             start_col_num = 0
         """写一行数据"""
         if type(data) == list:
             for col in range(start_col_num, start_col_num + len(data)):
-                sheet.write(row_num, col, data[col - start_col_num])
+                if style is None:
+                    sheet.write(row_num, col, data[col - start_col_num], self.default_style)
+                else:
+                    sheet.write(row_num, col, data[col - start_col_num], style)
         else:
             raise RuntimeError('格式不正确，必须为list类型数据')
 
@@ -125,26 +129,30 @@ class OutputExcel(object):
             type_list = mode.typeList
             for type in type_list:
                 light_list = type.lightList
-                light_dict = self._init_light_dict(mode.model_name, type.type_name, front_title_list, rear_title_list, internal_title_list)
+                light_dict = self._init_light_dict(mode.model_name, type, front_title_list, rear_title_list, internal_title_list)
                 for light in light_list:
                     technology_list = self.technologyService.find_by_type_use(type.type_id, light.use_id)
                     light_info_str = ""
+                    counter = 0
                     for technology in technology_list:
+                        counter += 1
                         light_info_str += "["
                         light_info_str += technology.technology_name
-                        light_info_str += "]"
+                        light_info_str += "] "
                         lightInfos = self.lightInfosService.find_by_keys(type.type_id, light.use_id, technology.technology_id)
                         light_info_str += lightInfos.osram_ece
-                        light_info_str += "\n"
+                        if counter != len(technology_list):
+                            light_info_str += "\r\n"
                     light_dict[light.use_name] = light_info_str
                     light_list_data.append(light_dict)
         return light_list_data
 
-
-    def _init_light_dict(self, model_name, type_name, front_title_list, rear_title_list, internal_title_list):
+    def _init_light_dict(self, model_name, type, front_title_list, rear_title_list, internal_title_list):
         light_dict = dict()
         light_dict["model_name"] = model_name
-        light_dict["type_name"] = type_name
+        light_dict["type_name"] = "{} {}kW built {}.{}-{}.{}".format(type.type_name, type.type_kw,
+                                                                     type.type_from_month, type.type_from_year,
+                                                                     type.type_to_month, type.type_to_year)
         for light_name in front_title_list:
             light_dict[light_name] = ""
         for light_name in rear_title_list:
@@ -153,10 +161,9 @@ class OutputExcel(object):
             light_dict[light_name] = ""
         return light_dict
 
-
-
     def create_title(self, front_title_list, rear_title_list, internal_title_list):
         """生成excel表头"""
+        pass
 
 
 if __name__ == '__main__':
@@ -199,5 +206,5 @@ if __name__ == '__main__':
 
     dataset = outputExcel.get_light_dataset(manufacturer_data, front_title_list, rear_title_list, internal_title_list)
     for i in range(0, len(dataset)):
-        outputExcel.write_row(sheet, list(dataset[i].values()), i + 2, 0, outputExcel.set_content_style())
+        outputExcel.write_row(sheet, list(dataset[i].values()), i + 2, 0)
     outputExcel.save()
