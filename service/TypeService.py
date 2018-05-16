@@ -20,7 +20,7 @@ class TypeService(BaseService):
     def select_by_model(self, __model_id, session=None):
         if session is None:
             session = DBSession()
-        return session.query(TypeBean).filter_by(__model_id=__model_id).all()
+        return session.query(TypeBean).filter_by(model_id=__model_id).all()
 
     def safe_insert(self, __type, session=None):
         if session is None:

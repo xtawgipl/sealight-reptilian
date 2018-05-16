@@ -14,6 +14,11 @@ class LightService(BaseService):
             .filter(LightBean.use_id == __use_id) \
             .filter(LightBean.pos_id == __pos_id).first()
 
+    def select_by_type(self, __type_id, session=None):
+        if session is None:
+            session = DBSession()
+        return session.query(LightBean).filter_by(type_id=__type_id).all()
+
     def safe_insert(self, __light, session=None):
         if session is None:
             session = DBSession()
