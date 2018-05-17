@@ -209,5 +209,5 @@ def fetch_light_infos(lightInfosService, __use_id, __type_id, __technology_id):
 
 def fetch_all_data():
     """抓所有数据"""
-    fetch_manufacturer()
+    # fetch_manufacturer()
     fetch_all_light()

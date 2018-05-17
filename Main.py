@@ -8,6 +8,6 @@ import Reptilian
 import OutputExcel
 
 if __name__ == '__main__':
-    # Reptilian.fetch_all_data()
+    Reptilian.fetch_all_data()
 
-    OutputExcel.export_excel()
+    # OutputExcel.export_excel()

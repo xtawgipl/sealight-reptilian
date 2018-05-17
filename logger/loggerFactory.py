@@ -14,7 +14,7 @@ import ProjectRoot
 DEFAULT_CONFIG_PATH = "logger.yml"
 DEV_MODE = "dev"
 PRO_MODE = "pro"
-DEFAULT_MODE = DEV_MODE
+DEFAULT_MODE = PRO_MODE
 ENV_KEY = 'LOG_CFG'
 
 
